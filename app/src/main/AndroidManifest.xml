@@ -27,7 +27,7 @@
         </activity>
 
         <service
-            android:name=".AutoAtAndReplyService"
+            android:name=".AutoAtAndReplyServiceList"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name"
