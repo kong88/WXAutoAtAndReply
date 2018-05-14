@@ -4,12 +4,13 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.graphics.Rect;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -26,6 +27,7 @@ public class ViewUtils {
     public static final String REGEX_3 = "邀请\"([^\"]+?)\"加入了.*";
     private static final String REGEX_AT = "^@([^@,]+?), 我是自动回复";
 
+    public final static String MM_PNAME = "com.tencent.mm";
 
     public static final String RESOURCE_CLASS_LL = "android.widget.LinearLayout";
     public static final String RESOURCE_CLASS_TV = "android.widget.TextView";
@@ -37,15 +39,44 @@ public class ViewUtils {
     // 消息的正文内容
     public static final String RESOURCE_ID_CONTENT = "com.tencent.mm:id/apx";
 
+    public static final String RESOURCE_ID_TEXT = "com.tencent.mm:id/jz";
+    public static final String RESOURCE_ID_BUTTON = "com.tencent.mm:id/aag";
+    public static final String RESOURCE_ID_IMAGEVIEW = "com.tencent.mm:id/jx";
 
-    public static   List<String>  mGroupList = new ArrayList<String>(){{
+    // 列表未读消息
+    public static final String RESOURCE_ID_RED_POINT = "com.tencent.mm:id/jj";
+
+    public final String OWNER_IMAGE_DESC = "kaka头像";
+
+
+    public static List<String> mGroupList = new ArrayList<String>() {{
         add("木头人");
         add("123test");
+        add("kaka1");
+        add("kaka2");
+        add("kaka3");
+        add("kaka4");
     }};
+
+    public static final String SEND_CONTENT = "Hello![太阳] 欢迎新店主入群\n" +
+            "\n" +
+            "[闪电]重点看这里 \n" +
+            "\n" +
+            "[闪电]扫码下面二维码\n" +
+            "[闪电]激活店主权限\n" +
+            "\n" +
+            "\n" +
+            "【[啤酒]每日特价39元！】——温碧泉蚕丝兔斯基面膜\n" +
+            "\n" +
+            "[机智]分享卖出可赚15.6元\n" +
+            "[礼物] 自购最多可省25.6元（首单立减10元+佣金15.6元）\n" +
+            "\n" +
+            "新店主操作手册\n" +
+            "https://shimo.im/docs/Yghjb1Y2hZ8ee0o5/\n";
 
     public static String getNodeText(AccessibilityNodeInfo nodeInfo) {
         if (nodeInfo.getText() == null || TextUtils.isEmpty(nodeInfo.getText().toString())) {
-            return  "";
+            return "";
         }
 
         return nodeInfo.getText().toString();
@@ -97,7 +128,7 @@ public class ViewUtils {
         while (matcher1.find()) {
             if (matcher1.groupCount() == 2) {
                 flag = true;
-                String atNickname = matcher1.group(2);
+                String atNickname = "@" + matcher1.group(2);
                 Log.e(TAG, "find 11111 atNickname:" + atNickname + " sourceString:" + string);
                 return atNickname;
             }
@@ -108,7 +139,7 @@ public class ViewUtils {
         while (matcher2.find()) {
             if (matcher2.groupCount() >= 1) {
                 flag = true;
-                String atNickname = matcher2.group(1);
+                String atNickname = "@" + matcher2.group(1);
                 Log.e(TAG, "find 2222222 atNickname:" + atNickname + " sourceString:" + string);
                 return atNickname;
             }
@@ -155,4 +186,12 @@ public class ViewUtils {
         return false;
     }
 
+    public static void pressBackButton() {
+        Runtime runtime = Runtime.getRuntime();
+        try {
+            runtime.exec("input keyevent " + KeyEvent.KEYCODE_BACK);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
