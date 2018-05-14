@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -27,7 +28,7 @@
         </activity>
 
         <service
-            android:name=".AutoAtAndReplyServiceList"
+            android:name=".GetFromListService"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name"

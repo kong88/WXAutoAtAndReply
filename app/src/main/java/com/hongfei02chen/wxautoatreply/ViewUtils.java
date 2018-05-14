@@ -23,7 +23,7 @@ public class ViewUtils {
 
     private static final String REGEX_1 = "^\"([^\"]+?)\"邀请\"([^\"]+?)\"";
     private static final String REGEX_2 = "^\"([^\"]+?)\"通过扫描";
-    public static final String REGEX_3 = "邀请\"([^\"]+?)\"加入了群聊.*";
+    public static final String REGEX_3 = "邀请\"([^\"]+?)\"加入了.*";
     private static final String REGEX_AT = "^@([^@,]+?), 我是自动回复";
 
 

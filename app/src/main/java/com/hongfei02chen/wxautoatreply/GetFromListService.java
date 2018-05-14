@@ -16,22 +16,23 @@ import android.os.Handler;
 import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.Toast;
+
+import com.hongfei02chen.wxautoatreply.utils.FileUtils;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.Executors;
 
 /**
- * 监听微信列表的消息
- *
+ * 监听微信列表的消息，从中获取指定群的新人nicknam
+ * <p>
  * created by chenhongfei on 2018/5/7
  */
-public class AutoAtAndReplyServiceList extends AccessibilityService {
+public class GetFromListService extends AccessibilityService {
     private static final String TAG = "AutoAtAndReplyService";
 
     private final static String MM_PNAME = "com.tencent.mm";
@@ -43,6 +44,7 @@ public class AutoAtAndReplyServiceList extends AccessibilityService {
     AccessibilityNodeInfo itemNodeinfo;
     private KeyguardManager.KeyguardLock kl;
     private Handler handler = new Handler();
+    private Handler mSaveHandler = new Handler();
 
     private final String RESOURCE_ID_TEXT = "com.tencent.mm:id/jz";
     private final String RESOURCE_ID_BUTTON = "com.tencent.mm:id/aag";
@@ -159,11 +161,10 @@ public class AutoAtAndReplyServiceList extends AccessibilityService {
         }
         for (AccessibilityNodeInfo nodeInfo : list) {
             if (ViewUtils.RESOURCE_CLASS_LL.equals(nodeInfo.getClassName())) {
-//                Log.i(TAG, "================== text: " + nodeInfo.getText());
 
                 // 从nodeInfo 查找子view
-                List<AccessibilityNodeInfo> titleList =   nodeInfo.findAccessibilityNodeInfosByViewId(ViewUtils.RESOURCE_ID_TITLE);
-                List<AccessibilityNodeInfo> contentList =   nodeInfo.findAccessibilityNodeInfosByViewId(ViewUtils.RESOURCE_ID_CONTENT);
+                List<AccessibilityNodeInfo> titleList = nodeInfo.findAccessibilityNodeInfosByViewId(ViewUtils.RESOURCE_ID_TITLE);
+                List<AccessibilityNodeInfo> contentList = nodeInfo.findAccessibilityNodeInfosByViewId(ViewUtils.RESOURCE_ID_CONTENT);
 
                 if (CollectionUtils.isEmpty(titleList) || CollectionUtils.isEmpty(contentList)) {
                     continue;
@@ -172,7 +173,9 @@ public class AutoAtAndReplyServiceList extends AccessibilityService {
                 // 每个nodeInfo节点只有一个title和content元素
                 String title = ViewUtils.getNodeText(titleList.get(0));
                 String content = ViewUtils.getNodeText(contentList.get(0));
-                if (TextUtils.isEmpty(title) ||TextUtils.isEmpty(content)) {
+
+//                Log.i(TAG, String.format("=================title:%s, content:%s", title, content));
+                if (TextUtils.isEmpty(title) || TextUtils.isEmpty(content)) {
                     continue;
                 }
 
@@ -195,13 +198,13 @@ public class AutoAtAndReplyServiceList extends AccessibilityService {
 //                }
 
                 // 保存nickname
-                SharedPreferRecord.getInstance(this).edit().putLong(nickname, System.currentTimeMillis()).commit();
-                Log.d(TAG, "====:nickname:" + nickname);
+//                SharedPreferRecord.getInstance(this).edit().putLong(nickname, System.currentTimeMillis()).commit();
+                Log.d(TAG, String.format("====group:%s, nickname:%s", title, nickname));
+                saveFile(title, nickname);
             }
         }
 
     }
-
 
 
     protected boolean isEverAt(AccessibilityNodeInfo rootNode, int textBottom) {
@@ -232,7 +235,6 @@ public class AutoAtAndReplyServiceList extends AccessibilityService {
             return true;
         }
     }
-
 
 
     private void checkAndFillAndSend(String nickname) {
@@ -397,5 +399,20 @@ public class AutoAtAndReplyServiceList extends AccessibilityService {
         }
 
         return false;
+    }
+
+    private void saveFile(final String group, final String nickname) {
+        mSaveHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Executors.newSingleThreadExecutor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        String content = group + "," + nickname + "," + System.currentTimeMillis() / 1000 +  "\r\n";
+                        FileUtils.appendFile(FileUtils.getSaveFilePath(), content);
+                    }
+                });
+            }
+        });
     }
 }
