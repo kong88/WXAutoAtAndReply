@@ -1,4 +1,4 @@
-package com.hongfei02chen.wxautoatreply;
+package com.hongfei02chen.wxautoatreply.utils;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.ClipData;
@@ -40,6 +40,7 @@ public class ViewUtils {
 
     public static   List<String>  mGroupList = new ArrayList<String>(){{
         add("木头人");
+        add("123test");
     }};
 
     public static String getNodeText(AccessibilityNodeInfo nodeInfo) {

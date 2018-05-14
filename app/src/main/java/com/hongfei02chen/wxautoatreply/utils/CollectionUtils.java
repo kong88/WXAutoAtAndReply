@@ -1,4 +1,4 @@
-package com.hongfei02chen.wxautoatreply;
+package com.hongfei02chen.wxautoatreply.utils;
 
 import java.util.Collection;
 import java.util.Map;

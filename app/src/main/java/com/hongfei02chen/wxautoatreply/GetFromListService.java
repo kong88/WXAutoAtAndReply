@@ -16,11 +16,12 @@ import android.os.Handler;
 import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.Pair;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import com.hongfei02chen.wxautoatreply.utils.CollectionUtils;
 import com.hongfei02chen.wxautoatreply.utils.FileUtils;
+import com.hongfei02chen.wxautoatreply.utils.ViewUtils;
 
 import java.util.HashMap;
 import java.util.List;
