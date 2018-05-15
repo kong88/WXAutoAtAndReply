@@ -1,6 +1,7 @@
 package com.hongfei02chen.wxautoatreply;
 
 import android.accessibilityservice.AccessibilityService;
+import android.app.ActivityManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -8,15 +9,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import com.hongfei02chen.wxautoatreply.utils.AppUtils;
 import com.hongfei02chen.wxautoatreply.utils.CollectionUtils;
 import com.hongfei02chen.wxautoatreply.utils.ViewUtils;
 
-import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * 进入聊天页面，自动发消息
@@ -26,19 +28,30 @@ import java.util.List;
 public class SendService extends AccessibilityService {
     private static final String TAG = "AutoAtAndReply";
 
+    private static final long mDelayTime = 5000;
 
-    boolean background = false;
+
+    private static String mForegroundPackageName;
+
     private String mGroup;
     private String mNickname;
 
     private Handler mHandler = new Handler();
     private Handler mSendHandler = new Handler();
 
+    private LinkedList<String> mSendList = new LinkedList<String>() {{
+//        add("123test,@kong ,1526288641");
+        add("木头人,@kong ,1526288641");
+//        add("123test,@Jim ,1526288641");
+        add("木头人,@Jim ,1526288641");
+    }};
+
+    private boolean mInSendView = false;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        mSendHandler.postDelayed(mRunnable, 1000);
+        mSendHandler.postDelayed(mRunnable, mDelayTime);
     }
 
     @Override
@@ -47,6 +60,9 @@ public class SendService extends AccessibilityService {
         Log.d(TAG, "get event = " + eventType);
         switch (eventType) {
             case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
+                mForegroundPackageName = event.getPackageName().toString();
+                break;
+            case AccessibilityEvent.TYPE_VIEW_CLICKED:
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -54,7 +70,6 @@ public class SendService extends AccessibilityService {
                         fillAndSend(rootNode, mGroup, mNickname);
                     }
                 });
-
                 break;
         }
     }
@@ -65,7 +80,8 @@ public class SendService extends AccessibilityService {
     }
 
     //resource-id : com.tencent.mm:id/jz
-    public void findGroupAndSend(AccessibilityNodeInfo rootNode, String viewId, String groupName, String nickname) {
+    public void findGroupAndClick(String viewId, String groupName, String nickname) {
+        AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         if (rootNode == null) {
             return;
         }
@@ -88,7 +104,7 @@ public class SendService extends AccessibilityService {
                 String title = ViewUtils.getNodeText(titleList.get(0));
                 String content = ViewUtils.getNodeText(contentList.get(0));
 
-                Log.i(TAG, String.format("=================title:%s, content:%s", title, content));
+                Log.i(TAG, String.format("=================findGroupAndClick title:%s, content:%s", title, content));
                 if (TextUtils.isEmpty(title) || TextUtils.isEmpty(content)) {
                     continue;
                 }
@@ -98,30 +114,43 @@ public class SendService extends AccessibilityService {
                     continue;
                 }
 
-                Log.d(TAG, String.format("====group:%s, nickname:%s", title, nickname));
 
                 // 模拟点击，进入聊天窗口
+                mInSendView = true;
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                Log.d(TAG, String.format("====match group:%s, nickname:%s and click", title, nickname));
+                break;
             }
         }
     }
 
 
-    private void fillAndSend(AccessibilityNodeInfo rootNode, String string, String nickname) {
-
-        if (rootNode == null) {
+    private void fillAndSend(AccessibilityNodeInfo rootNode, String group, String nickname) {
+        if (!mInSendView) {
             return;
         }
-//        Log.d(TAG, " ===============String:" + string);
+        if (rootNode == null) {
+            if (mInSendView) {
+                mInSendView = false;
+                Log.d(TAG, "===============nullnullnullnull======pressBackButton");
+                ViewUtils.clickView(rootNode, ViewUtils.RESOURCE_ID_BACK, "android.widget.ImageView");
+            }
+            return;
+        }
+        Log.d(TAG, String.format(" ===============fillAndSend group:%s, nickname:%s ", group, nickname));
         boolean flag = findEditText(rootNode, nickname);
-//        Log.d(TAG, " ===============flag:" + flag);
+        Log.d(TAG, " ===============flag:" + flag);
         if (flag) {
             send();
         }
-        flag = findEditText(rootNode, string);
+        flag = findEditText(rootNode, ViewUtils.SEND_CONTENT);
         if (flag) {
             send();
         }
+
+        mInSendView = false;
+        Log.d(TAG, "=====================pressBackButton");
+        ViewUtils.clickView(rootNode, ViewUtils.RESOURCE_ID_BACK, "android.widget.ImageView");
     }
 
     private boolean findEditText(AccessibilityNodeInfo rootNode, String content) {
@@ -185,16 +214,38 @@ public class SendService extends AccessibilityService {
                 node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             }
         }
-        ViewUtils.pressBackButton();
     }
 
+    public boolean isAppForeground(String packetName) {
+        return packetName.equals(mForegroundPackageName);
+    }
 
     Runnable mRunnable = new Runnable() {
         @Override
         public void run() {
-            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
-            findGroupAndSend(rootNode, ViewUtils.RESOURCE_ID_ITEM, mGroup, mNickname);
-            mSendHandler.postDelayed(this, 1000);
+            try {
+                if (!mSendList.isEmpty() && !mInSendView && isAppForeground(ViewUtils.MM_PNAME)) {
+                    String content = mSendList.removeFirst();
+
+                    Log.d(TAG, "get content:" + content);
+                    if (!TextUtils.isEmpty(content)) {
+                        String[] splitArray = content.split(",");
+                        if (null != splitArray && splitArray.length == 3) {
+                            mGroup = splitArray[0];
+                            mNickname = splitArray[1];
+
+                            findGroupAndClick(ViewUtils.RESOURCE_ID_ITEM, mGroup, mNickname);
+                        }
+                    }
+                } else {
+//                    Log.d(TAG, "empty running=================" + mSendList.size() + " mInSendView:" + mInSendView + "  isAppForeground:"
+//                            + isAppForeground( ViewUtils.MM_PNAME) + " getRootInActiveWindow:" + getRootInActiveWindow());
+                }
+            } catch (NoSuchElementException e) {
+                e.printStackTrace();
+            }
+
+            mSendHandler.postDelayed(this, mDelayTime);
         }
     };
 }

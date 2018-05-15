@@ -42,6 +42,7 @@ public class ViewUtils {
     public static final String RESOURCE_ID_TEXT = "com.tencent.mm:id/jz";
     public static final String RESOURCE_ID_BUTTON = "com.tencent.mm:id/aag";
     public static final String RESOURCE_ID_IMAGEVIEW = "com.tencent.mm:id/jx";
+    public static final String RESOURCE_ID_BACK = "com.tencent.mm:id/hm";
 
     // 列表未读消息
     public static final String RESOURCE_ID_RED_POINT = "com.tencent.mm:id/jj";
@@ -193,5 +194,21 @@ public class ViewUtils {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void clickView(AccessibilityNodeInfo rootNode, String resourceId, String classType) {
+            if (rootNode == null) {
+                return;
+            }
+            List<AccessibilityNodeInfo> list = rootNode.findAccessibilityNodeInfosByViewId(resourceId);
+            if (list == null) {
+                return;
+            }
+            for (AccessibilityNodeInfo node : list) {
+                if (classType.equals(node.getClassName()) && node.isEnabled()) {
+                    Log.i(TAG, "================== click  type:" + classType);
+                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                }
+            }
     }
 }
