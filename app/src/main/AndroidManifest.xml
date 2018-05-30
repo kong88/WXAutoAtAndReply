@@ -56,6 +56,21 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/send_service_config"/>
         </service>
+
+        <service
+            android:name=".TimerSendService"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/timer_send_service"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/send_service_config"/>
+        </service>
     </application>
 
 </manifest>

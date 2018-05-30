@@ -2,5 +2,6 @@
     <string name="app_name">WXAutoAtAndReply</string>
     <string name="get_service">WXAutoAtAndReply_Get</string>
     <string name="send_service">WXAutoAtAndReply_Send</string>
+    <string name="timer_send_service">WXAutoAtAndReply_TimerSend</string>
     <string name="accessibility_description">WeiXin_AutoAtAndReply_Service</string>
 </resources>

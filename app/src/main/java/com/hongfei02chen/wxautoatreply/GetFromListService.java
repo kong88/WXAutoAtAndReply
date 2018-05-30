@@ -78,7 +78,7 @@ public class GetFromListService extends AccessibilityService {
                 }
 
                 // 不包含这个群组
-                if (!ViewUtils.mGroupList.contains(title)) {
+                if (!ViewUtils.mGroupList.contains(title.toLowerCase())) {
                     continue;
                 }
 
