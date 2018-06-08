@@ -2,17 +2,24 @@ package com.hongfei02chen.xpwechathelper.hook;
 
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
+import android.content.Context;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.hongfei02chen.xpwechathelper.utils.AppLog;
+import com.hongfei02chen.xpwechathelper.utils.CollectionUtils;
 import com.hongfei02chen.xpwechathelper.utils.Constant;
+import com.hongfei02chen.xpwechathelper.utils.DataUtils;
+import com.hongfei02chen.xpwechathelper.utils.MessageUtils;
 import com.hongfei02chen.xpwechathelper.utils.PropertiesUtils;
+import com.hongfei02chen.xpwechathelper.utils.XmlUtils;
+import com.hongfei02chen.xpwechathelper.utils.XposedLog;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -48,7 +55,7 @@ public class RevokeMsgHook {
         private static final RevokeMsgHook instance = new RevokeMsgHook();
     }
 
-    public void init(ClassLoader classLoader, String versionName) {
+    public void init(Context context, ClassLoader classLoader, String versionName) {
         insertClassName = "com.tencent.mm.storage.av";
         insertMethodName = "b";
         if (versionName.startsWith("6.6.6")) {
@@ -57,13 +64,13 @@ public class RevokeMsgHook {
         }
         if (this.classLoader == null) {
             this.classLoader = classLoader;
-            hook(classLoader);
+            hook(context, classLoader);
         }
     }
 
-    private void hook(ClassLoader classLoader) {
+    private void hook(final Context context, ClassLoader classLoader) {
         try {
-            Class clazz = XposedHelpers.findClass("com.tencent.wcdb.database.SQLiteDatabase", classLoader);
+            Class clazz = XposedHelpers.findClass(SQLiteDatabaseClassName, classLoader);
             XposedHelpers.findAndHookMethod(clazz, "updateWithOnConflict",
                     String.class, ContentValues.class, String.class, String[].class, int.class,
                     new XC_MethodHook() {
@@ -71,13 +78,13 @@ public class RevokeMsgHook {
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             if (param.args[0].equals("message")) {
                                 ContentValues contentValues = ((ContentValues) param.args[1]);
-                                reload();
+                                XposedLog.d("===contentValues:" + contentValues);
 
-                                if (disableRevoke && contentValues.getAsInteger("type") == 10000 &&
-                                        !contentValues.getAsString("content").equals("你撤回了一条消息")) {
-                                    handleMessageRecall(contentValues);
-                                    param.setResult(1);
-                                }
+//                                if (disableRevoke && null != contentValues && contentValues.getAsInteger("type") == 10000 &&
+//                                        !contentValues.getAsString("content").equals("你撤回了一条消息")) {
+//                                    handleMessageRecall(contentValues);
+//                                    param.setResult(1);
+//                                }
                             }
 
                             super.beforeHookedMethod(param);
@@ -88,7 +95,7 @@ public class RevokeMsgHook {
         }
 
         try {
-            Class clazz = XposedHelpers.findClass("com.tencent.wcdb.database.SQLiteDatabase", classLoader);
+            Class clazz = XposedHelpers.findClass(SQLiteDatabaseClassName, classLoader);
             XposedHelpers.findAndHookMethod(clazz, "delete",
                     String.class, String.class, String[].class,
                     new XC_MethodHook() {
@@ -129,7 +136,7 @@ public class RevokeMsgHook {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             storageInsertClazz = param.thisObject;
-                            AppLog.w("afterHookedMethod storageInsertClazz:" + storageInsertClazz  );
+                            AppLog.w("afterHookedMethod storageInsertClazz:" + storageInsertClazz);
                             Object msg = param.args[0];
                             long msgId = -1;
                             try {
@@ -145,7 +152,7 @@ public class RevokeMsgHook {
 
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                            AppLog.w("beforeHookedMethod  param:" + param.thisObject  );
+                            AppLog.w("beforeHookedMethod  param:" + param.thisObject);
                             super.beforeHookedMethod(param);
                         }
                     });
@@ -160,10 +167,11 @@ public class RevokeMsgHook {
                     try {
                         ContentValues contentValues = (ContentValues) param.args[2];
                         String tableName = (String) param.args[0];
-                        AppLog.w( "auto123 table:" +tableName + " param1:" +param.args[1] + " contentValues:" +contentValues.toString());
+                        AppLog.w("auto123 table:" + tableName + " param1:" + param.args[1] + " contentValues:" + contentValues.toString());
                         if (TextUtils.isEmpty(tableName) || !tableName.equals("message")) {
                             return;
                         }
+                        handlerJoinMessage(context, contentValues);
 
 //                        Integer type = contentValues.getAsInteger("type");
 //                        if (null == type) {
@@ -180,11 +188,11 @@ public class RevokeMsgHook {
 
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    AppLog.w("auto123 beforeHookedMethod table:" +  param.args[0] );
+                    AppLog.w("auto123 beforeHookedMethod table:" + param.args[0]);
                     super.beforeHookedMethod(param);
                 }
             });
-        }catch (Exception e) {
+        } catch (Exception e) {
 
         }
     }
@@ -209,4 +217,65 @@ public class RevokeMsgHook {
         XposedHelpers.callMethod(storageInsertClazz, "b", msg, false);
 
     }
+
+    private static void handlerJoinMessage(Context context, ContentValues cv) {
+        try {
+            Set<String> keySet = cv.keySet();
+            String key = "";
+            for (String s : keySet) {
+                key += s + ", ";
+            }
+            XposedLog.d("keySet:" + key);
+            Long createTime = cv.getAsLong("createTime");
+            String talker = cv.getAsString("talker");
+            String content = cv.getAsString("content");
+            Long type = cv.getAsLong("type");
+            int talkId = cv.getAsInteger("talkerId");
+            int msgId = cv.getAsInteger("msgId");
+
+            // 判断是否为激活群组
+            String roomName = MessageUtils.parseActiveGroup(content);
+            XposedLog.d("===roomName:" + roomName);
+            if (!TextUtils.isEmpty(roomName)) {
+                DataUtils.insertChatRoom(context, talker, roomName);
+                return;
+            }
+
+            // 判断是否为加群消息
+            Map<String, Object> retMap = XmlUtils.parseXml(content);
+            if (retMap == null) {
+                return;
+            }
+            String template = (String) retMap.get("template");
+            List<String> nicknameList = (List<String>) retMap.get("nicknameList");
+            List<String> usernameList = (List<String>) retMap.get("usernameList");
+            if (CollectionUtils.isEmpty(nicknameList)) {
+                return;
+            }
+            DataUtils.enQueue(context, msgId, talker, template, nicknameList, usernameList, createTime);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+//        JoinMessageBean joinMessage = new JoinMessageBean(null, );
+//        User user = new User(null, "zhangsan" + random.nextInt(9999),"张三");
+//        userDao.insert(user);
+
+
+//        String noteText = editText.getText().toString();
+//        editText.setText("");
+//
+//        final DateFormat df = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM);
+//        String comment = "Added on " + df.format(new Date());
+//
+//        Note note = new Note();
+//        note.setText(noteText);
+//        note.setComment(comment);
+//        note.setDate(new Date());
+//        note.setType(NoteType.TEXT);
+//        noteDao.insert(note);
+//        Log.d("DaoExample", "Inserted new note, ID: " + note.getId());
+
+    }
+
+    
 }

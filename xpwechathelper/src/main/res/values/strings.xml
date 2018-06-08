@@ -1,5 +1,12 @@
 <resources>
-    <string name="app_name">XPWechatHelper</string>
+    <string name="app_name">XP微信机器人</string>
 
     <string name="app_desc">XPWechatHelper</string>
+
+    <string name="send_service">微信机器人</string>
+    <string name="timer_send_service">WXAutoAtAndReply_TimerSend</string>
+    <string name="accessibility_description">微信机器人 自动发送消息服务</string>
+
+    <string name="_save">保存</string>
+    <string name="_edit">编辑</string>
 </resources>

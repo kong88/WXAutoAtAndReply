@@ -42,31 +42,31 @@ public class Main implements IXposedHookLoadPackage {
 
         if (BuildConfig.APPLICATION_ID.equals(packageName)) {
 
-            XposedHelpers.findAndHookMethod(MAIN_ACTIVITY,
-                    lpparam.classLoader,
-                    "onCreate",
-                    Bundle.class,
-                    new XC_MethodHook() {
-
-                        @Override
-                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                            //获取到当前hook的类,这里是MainActivity
-                            Class clazz = param.thisObject.getClass();
-                            XposedBridge.log("class name:" + clazz.getName());
-                            // 输入框不为私有private 可通过以下方式获取
-                            //Field field = clazz.getField("tv_text");// 密码输入框 id
-                            // 通过反射获取控件，无论parivate或者public
-                            Field field = clazz.getDeclaredField("tvText");
-                            // 设置访问权限（这点对于有过android开发经验的可以说很熟悉）
-                            field.setAccessible(true);
-                            TextView textView = (TextView) field.get(param.thisObject);
-                            String string = textView.getText().toString();
-                            XposedBridge.log("原来的字符 : " + string);
-                            // 设置属性
-                            textView.setText("我是被Xposed修改的啦");
-                        }
-                    }
-            );
+//            XposedHelpers.findAndHookMethod(MAIN_ACTIVITY,
+//                    lpparam.classLoader,
+//                    "onCreate",
+//                    Bundle.class,
+//                    new XC_MethodHook() {
+//
+//                        @Override
+//                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                            //获取到当前hook的类,这里是MainActivity
+//                            Class clazz = param.thisObject.getClass();
+//                            XposedBridge.log("class name:" + clazz.getName());
+//                            // 输入框不为私有private 可通过以下方式获取
+//                            //Field field = clazz.getField("tv_text");// 密码输入框 id
+//                            // 通过反射获取控件，无论parivate或者public
+//                            Field field = clazz.getDeclaredField("tvText");
+//                            // 设置访问权限（这点对于有过android开发经验的可以说很熟悉）
+//                            field.setAccessible(true);
+//                            TextView textView = (TextView) field.get(param.thisObject);
+//                            String string = textView.getText().toString();
+//                            XposedBridge.log("原来的字符 : " + string);
+//                            // 设置属性
+//                            textView.setText("我是被Xposed修改的啦");
+//                        }
+//                    }
+//            );
 
             XposedHelpers.findAndHookMethod(MAIN_ACTIVITY, lpparam.classLoader,
                     "showModuleActiveInfo", boolean.class, new XC_MethodHook() {
@@ -97,7 +97,7 @@ public class Main implements IXposedHookLoadPackage {
                                     wechatVersion = getVersionName(context, WECHAT_PACKAGE);
                                     AppLog.w("Found wechat version:" + wechatVersion + " packageName:" + packageName + " processName:" + processName);
                                     ClassLoader appClassLoader = context.getClassLoader();
-                                    handleHook(appClassLoader, wechatVersion);
+                                    handleHook(context, appClassLoader, wechatVersion);
                                 }
                             });
                 } catch (Throwable e) {
@@ -107,14 +107,14 @@ public class Main implements IXposedHookLoadPackage {
         }
     }
 
-    private void handleHook(ClassLoader classLoader, String versionName) {
+    private void handleHook(Context context, ClassLoader classLoader, String versionName) {
 //        new TencentLocationManagerHook(versionName).hook(classLoader);
 //        new EmojiGameHook(versionName).hook(classLoader);
 //        new MoneyHook(versionName).hook(classLoader);
 //        new UIHook(versionName).hook(classLoader);
 //        LauncherUIHook.getInstance().init(classLoader, versionName);
 //        ExdeviceRankHook.getInstance().init(classLoader, versionName);
-        RevokeMsgHook.getInstance().init(classLoader, versionName);
+        RevokeMsgHook.getInstance().init(context, classLoader, versionName);
 //        ExtDeviceWXLoginUIHook.getInstance().init(classLoader, versionName);
     }
 

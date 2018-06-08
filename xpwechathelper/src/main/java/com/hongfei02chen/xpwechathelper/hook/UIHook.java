@@ -162,7 +162,7 @@ public class UIHook {
                     super.beforeHookedMethod(param);
                 }
             });
-            Class fragmentClazz = XposedHelpers.findClass("android.support.v4.app.Fragment", classLoader);
+            Class fragmentClazz = XposedHelpers.findClass("android.support.v4.app.StatusFragment", classLoader);
             XposedHelpers.findAndHookMethod(fragmentClazz, "instantiate",
                     Context.class, String.class, Bundle.class, new XC_MethodHook() {
                         @Override
