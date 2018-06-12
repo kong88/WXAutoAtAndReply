@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/state_all"
+        android:orderInCategory="1"
+        android:title="状态:全部" />
+    <item
+        android:id="@+id/state_0"
+        android:orderInCategory="2"
+        android:title="状态:未发送" />
+    <item
+        android:id="@+id/state_1"
+        android:orderInCategory="3"
+        android:title="状态:已发送" />
+</menu>

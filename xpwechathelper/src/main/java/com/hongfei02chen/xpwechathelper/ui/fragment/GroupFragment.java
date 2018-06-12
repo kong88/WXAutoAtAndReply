@@ -41,6 +41,7 @@ public class GroupFragment extends Fragment {
         setLayoutManager();
         setAdapter();
         setDecoration();
+        getActivity().setTitle(R.string.app_name);
     }
 
     protected void setLayoutManager() {

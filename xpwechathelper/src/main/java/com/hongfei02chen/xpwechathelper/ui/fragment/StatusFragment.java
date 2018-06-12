@@ -48,6 +48,7 @@ public class StatusFragment extends Fragment implements View.OnClickListener {
         button = view.findViewById(R.id.btn);
         button.setOnClickListener(this);
 
+        getActivity().setTitle(R.string.app_name);
         EventBus.getDefault().register(this);
     }
 

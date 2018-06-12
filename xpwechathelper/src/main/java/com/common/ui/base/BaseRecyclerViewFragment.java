@@ -27,9 +27,14 @@ public abstract class BaseRecyclerViewFragment<D> extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_recycler_view, null);
+        initParams(savedInstanceState);
         initView(rootView);
         loadData();
         return rootView;
+    }
+
+    protected void initParams(Bundle savedInstanceState) {
+
     }
 
     protected void initView(View view) {
