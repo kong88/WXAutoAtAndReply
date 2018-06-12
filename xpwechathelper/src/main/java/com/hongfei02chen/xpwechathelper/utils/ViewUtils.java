@@ -49,6 +49,13 @@ public class ViewUtils {
     // 列表未读消息
     public static final String RESOURCE_ID_RED_POINT = "com.tencent.mm:id/jj";
 
+    // wechat6.6.7，at list 的search按钮
+    public static final String RESOURCE_ID_SEARCH = "com.tencent.mm:id/bc";
+    // wechat6.6.7，at list
+    public static final String RESOURCE_ID_AT_LISTVIEW = "com.tencent.mm:id/rt";
+    // at list 的nickname
+    public static final String RESOURCE_ID_AT_NICKNAME = "com.tencent.mm:id/rq";
+
     public final String OWNER_IMAGE_DESC = "kaka头像";
 
 

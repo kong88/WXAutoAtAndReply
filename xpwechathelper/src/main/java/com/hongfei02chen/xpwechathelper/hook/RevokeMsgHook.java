@@ -256,24 +256,6 @@ public class RevokeMsgHook {
         } catch (Exception e) {
             e.printStackTrace();
         }
-//        JoinMessageBean joinMessage = new JoinMessageBean(null, );
-//        User user = new User(null, "zhangsan" + random.nextInt(9999),"张三");
-//        userDao.insert(user);
-
-
-//        String noteText = editText.getText().toString();
-//        editText.setText("");
-//
-//        final DateFormat df = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM);
-//        String comment = "Added on " + df.format(new Date());
-//
-//        Note note = new Note();
-//        note.setText(noteText);
-//        note.setComment(comment);
-//        note.setDate(new Date());
-//        note.setType(NoteType.TEXT);
-//        noteDao.insert(note);
-//        Log.d("DaoExample", "Inserted new note, ID: " + note.getId());
 
     }
 
