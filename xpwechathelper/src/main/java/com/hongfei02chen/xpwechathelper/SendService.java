@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.os.Bundle;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
@@ -332,10 +331,11 @@ public class SendService extends AccessibilityService {
 
             if ("android.widget.EditText".equals(nodeInfo.getClassName())) {
                 AppLog.debug(TAG, "================== findEditText lable: " + label + " content:" + content);
-                Bundle arguments = new Bundle();
-                arguments.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT, AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD);
-                arguments.putBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, true);
-                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY, arguments);
+//                Bundle arguments = new Bundle();
+//                arguments.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT, AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD);
+//                arguments.putBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, true);
+//                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY, arguments);
+                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLEAR_SELECTION);
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS);
                 nodeInfo.performAction(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
@@ -387,6 +387,19 @@ public class SendService extends AccessibilityService {
     public boolean isAppForeground(String packetName) {
         return packetName.equals(mForegroundPackageName);
     }
+
+    @Override
+    public void onDestroy() {
+        AppLog.debug(TAG, " process onDestroy======");
+        super.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        AppLog.debug(TAG, " process onLowMemory======");
+        super.onLowMemory();
+    }
+
 
     Runnable mRunnable = new Runnable() {
         @Override
