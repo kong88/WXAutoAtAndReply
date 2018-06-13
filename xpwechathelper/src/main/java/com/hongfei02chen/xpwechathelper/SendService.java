@@ -22,7 +22,6 @@ import com.hongfei02chen.xpwechathelper.utils.ViewUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -68,12 +67,6 @@ public class SendService extends AccessibilityService {
         int eventType = event.getEventType();
         Log.d(TAG, "get event = " + eventType);
         switch (eventType) {
-            case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
-                if ("com.meizu.flyme.input".equals(event.getPackageName().toString())) {
-                    break;
-                }
-                mForegroundPackageName = event.getPackageName().toString();
-                break;
             case AccessibilityEvent.TYPE_VIEW_CLICKED:
                 mHandler.post(new Runnable() {
                     @Override
@@ -83,10 +76,23 @@ public class SendService extends AccessibilityService {
                     }
                 });
                 break;
+            case AccessibilityEvent.TYPE_VIEW_FOCUSED:
+                break;
+            case AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED:// paste at , text changed
+                break;
+            case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:// 弹出 at list window，at list window 消失
+                if ("com.meizu.flyme.input".equals(event.getPackageName().toString())) {
+                    break;
+                }
+                mForegroundPackageName = event.getPackageName().toString();
+                break;
+
             case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                 break;
             case AccessibilityEvent.TYPE_VIEW_SCROLLED:
-                    break;
+                break;
+            case AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED:
+                break;
         }
     }
 
@@ -205,7 +211,7 @@ public class SendService extends AccessibilityService {
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY, arguments);
 
                 final ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clipAt = ClipData.newPlainText("label", "@");
+                ClipData clipAt = ClipData.newPlainText("at", "@");
                 clipboardManager.setPrimaryClip(clipAt);
 
 //                final String nickname ="";
@@ -218,26 +224,35 @@ public class SendService extends AccessibilityService {
                                 break;
                             case PASTE_AT:
                                 if (CollectionUtils.isEmpty(nicknameList)) {
-                                    state = SendState.S.ACTION_SEND;
+                                    state = SendState.S.CLICK_SEND;
+                                    // 继续at nickname or enter if 流程
+                                    mViewHandler.postDelayed(this, 500);
                                 } else {
                                     nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
                                     nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
                                     AppLog.debug(TAG, String.format("=====exec 00000 state:%s", state));
 
-                                    state = SendState.S.ACTION_AT_NICKNAME;
+                                    state = SendState.S.SELECT_AT_NICKNAME;
+                                    // 继续at nickname or enter if 流程
+                                    mViewHandler.postDelayed(this, 1500);
                                 }
-                                // 继续at nickname or enter if 流程
-                                mViewHandler.postDelayed(this, 1500);
+
                                 break;
-                            case ACTION_AT_NICKNAME:
+                            case SELECT_AT_NICKNAME:
                                 String nickname = mNicknameList.remove(0);
                                 // 1、执行at nickname
-                                findListViewAndClickItem(nickname);
-                                AppLog.debug(TAG, String.format("=====exec 11111 state:%s, at nickname:%s ", state, nickname));
+                                boolean found = findListViewAndClickItem(nickname);
+                                AppLog.debug(TAG, String.format("=====exec 11111 state:%s, at nickname:%s, found:%b ", state, nickname, found));
+                                if (found) {
+
+                                } else {
+                                    // retry
+
+                                }
                                 state = SendState.S.PASTE_AT;
                                 mViewHandler.postDelayed(this, 500);
                                 break;
-                            case ACTION_SEND:
+                            case CLICK_SEND:
                                 send();
                                 AppLog.debug(TAG, String.format("=====exec 22222 send nickname state:%s", state));
                                 state = SendState.S.PASTE_CONTENT;
@@ -247,13 +262,13 @@ public class SendService extends AccessibilityService {
                                 boolean flag = findEditText(rootNode, ViewUtils.SEND_CONTENT);
                                 AppLog.debug(TAG, String.format("=====exec 33333 fill content state:%s", state));
                                 if (flag) {
-                                    state = SendState.S.ACTION_SEND_2;
+                                    state = SendState.S.CLICK_SEND_2;
                                 } else {
                                     state = SendState.S.END;
                                 }
                                 mViewHandler.postDelayed(this, 500);
                                 break;
-                            case ACTION_SEND_2:
+                            case CLICK_SEND_2:
                                 send();
                                 AppLog.debug(TAG, "=====exec 44444 send content");
                                 // update database
@@ -286,12 +301,12 @@ public class SendService extends AccessibilityService {
         return false;
     }
 
-    private void findListViewAndClickItem(String nickname) {
+    private boolean findListViewAndClickItem(String nickname) {
+        boolean found = false;
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         List<AccessibilityNodeInfo> nodeList = rootNode.findAccessibilityNodeInfosByViewId(ViewUtils.RESOURCE_ID_AT_LISTVIEW);
 //        AppLog.debug(TAG, " nodeList:" + nodeList.size() + " rootNode;" + rootNode);
         if (!CollectionUtils.isEmpty(nodeList)) {
-
             int position = -1;
             for (int i = 0; i < nodeList.size(); i++) {
                 AccessibilityNodeInfo nodeInfo = nodeList.get(i);
@@ -301,7 +316,6 @@ public class SendService extends AccessibilityService {
                 }
 
                 int forNum = 100;
-                boolean found = false;
                 while (forNum > 0) {
                     nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
                     AppLog.debug(TAG, " list current for:" + forNum + " getChildCount: " + nodeInfo.getChildCount());
@@ -330,6 +344,8 @@ public class SendService extends AccessibilityService {
                 }
             }
         }
+
+        return found;
     }
 
     private boolean findEditText(AccessibilityNodeInfo rootNode, String resourceId, String label, String content) {
@@ -376,7 +392,7 @@ public class SendService extends AccessibilityService {
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
 
                 ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("label", content);
+                ClipData clip = ClipData.newPlainText("content", content);
                 clipboardManager.setPrimaryClip(clip);
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
                 return true;
@@ -466,13 +482,13 @@ public class SendService extends AccessibilityService {
                     break;
                 case PASTE_AT:
                     break;
-                case ACTION_AT_NICKNAME:
+                case SELECT_AT_NICKNAME:
                     break;
-                case ACTION_SEND:
+                case CLICK_SEND:
                     break;
                 case PASTE_CONTENT:
                     break;
-                case ACTION_SEND_2:
+                case CLICK_SEND_2:
                     break;
             }
 
