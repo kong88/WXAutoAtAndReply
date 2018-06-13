@@ -136,13 +136,12 @@ public class RevokeMsgHook {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             storageInsertClazz = param.thisObject;
-                            AppLog.w("afterHookedMethod storageInsertClazz:" + storageInsertClazz);
+                            AppLog.d("afterHookedMethod storageInsertClazz:" + storageInsertClazz);
                             Object msg = param.args[0];
                             long msgId = -1;
                             try {
                                 msgId = XposedHelpers.getLongField(msg, "field_msgId");
                                 msgCacheMap.put(msgId, msg);
-                                AppLog.w("msgId:" + msgId + " msg:" + msg);
                             } catch (Throwable e) {
                                 e.printStackTrace();
                             }
@@ -152,7 +151,6 @@ public class RevokeMsgHook {
 
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                            AppLog.w("beforeHookedMethod  param:" + param.thisObject);
                             super.beforeHookedMethod(param);
                         }
                     });
@@ -167,7 +165,7 @@ public class RevokeMsgHook {
                     try {
                         ContentValues contentValues = (ContentValues) param.args[2];
                         String tableName = (String) param.args[0];
-                        AppLog.w("auto123 table:" + tableName + " param1:" + param.args[1] + " contentValues:" + contentValues.toString());
+                        AppLog.d("auto123 table:" + tableName + " param1:" + param.args[1] + " contentValues:" + contentValues.toString());
                         if (TextUtils.isEmpty(tableName) || !tableName.equals("message")) {
                             return;
                         }

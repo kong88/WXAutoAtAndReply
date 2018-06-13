@@ -67,22 +67,22 @@ public class ViewUtils {
         add("kaka3");
         add("kaka4");
     }};
-
-    public static final String SEND_CONTENT = "Hello![太阳] 欢迎新店主入群\n" +
-            "\n" +
-            "[闪电]重点看这里 \n" +
-            "\n" +
-            "[闪电]扫码下面二维码\n" +
-            "[闪电]激活店主权限\n" +
-            "\n" +
-            "\n" +
-            "【[啤酒]每日特价39元！】——温碧泉蚕丝兔斯基面膜\n" +
-            "\n" +
-            "[机智]分享卖出可赚15.6元\n" +
-            "[礼物] 自购最多可省25.6元（首单立减10元+佣金15.6元）\n" +
-            "\n" +
-            "新店主操作手册\n" +
-            "https://shimo.im/docs/Yghjb1Y2hZ8ee0o5/\n";
+    public static final String SEND_CONTENT = "Hello![太阳] 欢迎新店主入群\n";
+//    public static final String SEND_CONTENT = "Hello![太阳] 欢迎新店主入群\n" +
+//            "\n" +
+//            "[闪电]重点看这里 \n" +
+//            "\n" +
+//            "[闪电]扫码下面二维码\n" +
+//            "[闪电]激活店主权限\n" +
+//            "\n" +
+//            "\n" +
+//            "【[啤酒]每日特价39元！】——温碧泉蚕丝兔斯基面膜\n" +
+//            "\n" +
+//            "[机智]分享卖出可赚15.6元\n" +
+//            "[礼物] 自购最多可省25.6元（首单立减10元+佣金15.6元）\n" +
+//            "\n" +
+//            "新店主操作手册\n" +
+//            "https://shimo.im/docs/Yghjb1Y2hZ8ee0o5/\n";
 
     public static String getNodeText(AccessibilityNodeInfo nodeInfo) {
         if (nodeInfo.getText() == null || TextUtils.isEmpty(nodeInfo.getText().toString())) {
@@ -205,27 +205,30 @@ public class ViewUtils {
         }
     }
 
-    public static void clickView(AccessibilityNodeInfo rootNode, String resourceId, String classType) {
-            if (rootNode == null) {
-                return;
+    public static boolean clickView(AccessibilityNodeInfo rootNode, String resourceId, String classType) {
+        if (rootNode == null) {
+            return false;
+        }
+        List<AccessibilityNodeInfo> list = rootNode.findAccessibilityNodeInfosByViewId(resourceId);
+        if (list == null) {
+            return false;
+        }
+        for (AccessibilityNodeInfo node : list) {
+            if (classType.equals(node.getClassName()) && node.isEnabled()) {
+                Log.i(TAG, "================== click  type:" + classType);
+                node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                return true;
             }
-            List<AccessibilityNodeInfo> list = rootNode.findAccessibilityNodeInfosByViewId(resourceId);
-            if (list == null) {
-                return;
-            }
-            for (AccessibilityNodeInfo node : list) {
-                if (classType.equals(node.getClassName()) && node.isEnabled()) {
-                    Log.i(TAG, "================== click  type:" + classType);
-                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                }
-            }
+        }
+
+        return false;
     }
 
     public static String formatAtList(List<String> nicknameList) {
         if (CollectionUtils.isEmpty(nicknameList)) {
             return null;
         }
-        StringBuilder sb  = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         for (String nickname : nicknameList) {
             sb.append("@").append(nickname).append(" ");
         }

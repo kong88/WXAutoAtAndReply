@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -20,7 +19,6 @@ import com.hongfei02chen.xpwechathelper.utils.CollectionUtils;
 import com.hongfei02chen.xpwechathelper.utils.DataUtils;
 import com.hongfei02chen.xpwechathelper.utils.ViewUtils;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -148,7 +146,7 @@ public class SendService extends AccessibilityService {
     }
 
 
-    private void fillAndSend(final AccessibilityNodeInfo rootNode, String group, String nickname, List<String> nicknameList) {
+    private void fillAndSend(final AccessibilityNodeInfo rootNode, String group, String nickname, final List<String> nicknameList) {
         if (!mInSendView) {
             return;
         }
@@ -161,19 +159,85 @@ public class SendService extends AccessibilityService {
             return;
         }
         Log.d(TAG, String.format(" ===============begin fillAndSend() group:%s, nickname:%s ", group, nickname));
-        boolean flag = findEditTextNickname(rootNode, nicknameList);
-        Log.d(TAG, " ===============end fillAndSend() flag:" + flag);
+        state = SendState.S.PASTE_AT;
+        mViewHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                switch (state) {
+                    case IDLE:
+                        break;
+                    case PASTE_AT:
+                        if (CollectionUtils.isEmpty(nicknameList)) {
+                            state = SendState.S.CLICK_SEND;
+                            // 继续at nickname or enter if 流程
+                            mViewHandler.postDelayed(this, 500);
+                        } else {
+                            boolean flag = findEditTextAt(rootNode);
+                            AppLog.debug(TAG, String.format("=====exec 00000 state:%s, flag:%b", state, flag));
 
+                            state = SendState.S.SELECT_AT_NICKNAME;
+                            // 继续at nickname or enter if 流程
+                            mViewHandler.postDelayed(this, 1500);
+                        }
+                        break;
+                    case SELECT_AT_NICKNAME:
+                       final String nickname = mNicknameList.remove(0);
+                        // 1、执行at nickname
+                        boolean found = findListViewAndClickItem(nickname);
+                        AppLog.debug(TAG, String.format("=====exec 11111 state:%s, at nickname:%s, flag:%b ", state, nickname, found));
+                        state = SendState.S.PASTE_AT;
+                        if (found) {
 
-    }
+                        } else {
+                            // 如果找不到，则关闭窗口，然后粘贴nickname，然后往下执行
+                            ViewUtils.clickView(getRootInActiveWindow(), "com.tencent.mm:id/ht", "android.widget.ImageView");
 
-    public static void pressBackButton() {
-        Runtime runtime = Runtime.getRuntime();
-        try {
-            runtime.exec("input keyevent " + KeyEvent.KEYCODE_BACK);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            findEditTextContent(getRootInActiveWindow(), nickname + " ");
+                        }
+                        mViewHandler.postDelayed(this, 500);
+                        break;
+                    case CLICK_SEND:
+                        boolean flagSend = send();
+                        AppLog.debug(TAG, String.format("=====exec 22222 send nickname state:%s, flag:%b", state, flagSend));
+                        state = SendState.S.PASTE_CONTENT;
+                        mViewHandler.postDelayed(this, 500);
+                        break;
+                    case PASTE_CONTENT:
+                        boolean flag = findEditTextContent(rootNode, ViewUtils.SEND_CONTENT);
+                        AppLog.debug(TAG, String.format("=====exec 33333 fill content state:%s, flag:%b", state, flag));
+                        if (flag) {
+                            state = SendState.S.CLICK_SEND_2;
+                        } else {
+                            state = SendState.S.END;
+                        }
+                        mViewHandler.postDelayed(this, 500);
+                        break;
+                    case CLICK_SEND_2:
+                        boolean flagSend2 = send();
+                        AppLog.debug(TAG, String.format("=====exec 44444 send content state:%s, flag:%b", state, flagSend2));
+                        // update database
+                        if (null != mMessageBean) {
+                            mMessageBean.setState(1);
+                            mDaoSession.getJoinMessageBeanDao().update(mMessageBean);
+                            mMessageBean = null;
+                            AppLog.debug(TAG, "=====exec 44444 update database =====");
+                        }
+                        state = SendState.S.END;
+                        mViewHandler.postDelayed(this, 500);
+                        break;
+                    case END:
+                        mInSendView = false;
+                        performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
+                        AppLog.debug(TAG, "=====exec 55555 press back end!!!");
+                        break;
+                }
+            }
+        });
     }
 
     public void pressGlobalActionBack() {
@@ -185,121 +249,6 @@ public class SendService extends AccessibilityService {
         }, 1000);
     }
 
-    /**
-     * 1、fill nickname and send
-     * 2、fill content and send
-     *
-     * @param rootNode
-     * @param nicknameList
-     * @return
-     */
-    private boolean findEditTextNickname(final AccessibilityNodeInfo rootNode, final List<String> nicknameList) {
-        int count = rootNode.getChildCount();
-
-        for (int i = 0; i < count; i++) {
-            final AccessibilityNodeInfo nodeInfo = rootNode.getChild(i);
-            if (nodeInfo == null) {
-                Log.d(TAG, "nodeinfo = null");
-                continue;
-            }
-
-            if ("android.widget.EditText".equals(nodeInfo.getClassName())) {
-                AppLog.debug(TAG, "================== findEditTextNickname : " + ViewUtils.formatAtList(nicknameList));
-                Bundle arguments = new Bundle();
-                arguments.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT, AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD);
-                arguments.putBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, true);
-                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY, arguments);
-
-                final ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clipAt = ClipData.newPlainText("at", "@");
-                clipboardManager.setPrimaryClip(clipAt);
-
-//                final String nickname ="";
-                state = SendState.S.PASTE_AT;
-                mViewHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        switch (state) {
-                            case IDLE:
-                                break;
-                            case PASTE_AT:
-                                if (CollectionUtils.isEmpty(nicknameList)) {
-                                    state = SendState.S.CLICK_SEND;
-                                    // 继续at nickname or enter if 流程
-                                    mViewHandler.postDelayed(this, 500);
-                                } else {
-                                    nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
-                                    nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
-                                    AppLog.debug(TAG, String.format("=====exec 00000 state:%s", state));
-
-                                    state = SendState.S.SELECT_AT_NICKNAME;
-                                    // 继续at nickname or enter if 流程
-                                    mViewHandler.postDelayed(this, 1500);
-                                }
-
-                                break;
-                            case SELECT_AT_NICKNAME:
-                                String nickname = mNicknameList.remove(0);
-                                // 1、执行at nickname
-                                boolean found = findListViewAndClickItem(nickname);
-                                AppLog.debug(TAG, String.format("=====exec 11111 state:%s, at nickname:%s, found:%b ", state, nickname, found));
-                                if (found) {
-
-                                } else {
-                                    // retry
-
-                                }
-                                state = SendState.S.PASTE_AT;
-                                mViewHandler.postDelayed(this, 500);
-                                break;
-                            case CLICK_SEND:
-                                send();
-                                AppLog.debug(TAG, String.format("=====exec 22222 send nickname state:%s", state));
-                                state = SendState.S.PASTE_CONTENT;
-                                mViewHandler.postDelayed(this, 500);
-                                break;
-                            case PASTE_CONTENT:
-                                boolean flag = findEditText(rootNode, ViewUtils.SEND_CONTENT);
-                                AppLog.debug(TAG, String.format("=====exec 33333 fill content state:%s", state));
-                                if (flag) {
-                                    state = SendState.S.CLICK_SEND_2;
-                                } else {
-                                    state = SendState.S.END;
-                                }
-                                mViewHandler.postDelayed(this, 500);
-                                break;
-                            case CLICK_SEND_2:
-                                send();
-                                AppLog.debug(TAG, "=====exec 44444 send content");
-                                // update database
-                                if (null != mMessageBean) {
-                                    mMessageBean.setState(1);
-                                    mDaoSession.getJoinMessageBeanDao().update(mMessageBean);
-                                    mMessageBean = null;
-                                    AppLog.debug(TAG, "=====exec 44444 update database =====");
-                                }
-                                state = SendState.S.END;
-                                mViewHandler.postDelayed(this, 500);
-                                break;
-                            case END:
-                                mInSendView = false;
-                                performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
-                                AppLog.debug(TAG, "=====exec 55555 press back");
-                                break;
-                        }
-                    }
-                });
-
-
-                return true;
-            }
-            if (findEditTextNickname(nodeInfo, nicknameList)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     private boolean findListViewAndClickItem(String nickname) {
         boolean found = false;
@@ -348,29 +297,15 @@ public class SendService extends AccessibilityService {
         return found;
     }
 
-    private boolean findEditText(AccessibilityNodeInfo rootNode, String resourceId, String label, String content) {
-        List<AccessibilityNodeInfo> nodeList = rootNode.findAccessibilityNodeInfosByViewId(resourceId);
-        if (nodeList == null) {
-            return false;
-        }
-
-        for (AccessibilityNodeInfo nodeInfo : nodeList) {
-            if ("android.widget.EditText".equals(nodeInfo.getClassName())) {
-                ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-
-                ClipData clip = ClipData.newPlainText(label, content);
-                clipboardManager.setPrimaryClip(clip);
-                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
-
-                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
-                return true;
-            }
-        }
-
-        return false;
+    private boolean findEditTextAt(AccessibilityNodeInfo rootNode) {
+        return findEditText(rootNode, "label", "@");
     }
 
-    private boolean findEditText(AccessibilityNodeInfo rootNode, String content) {
+    private boolean findEditTextContent(AccessibilityNodeInfo rootNode, String content) {
+        return findEditText(rootNode, "content", content);
+    }
+
+    private boolean findEditText(AccessibilityNodeInfo rootNode, String label, String content) {
         int count = rootNode.getChildCount();
 
 //        Log.d(TAG, "root class=" + rootNode.getClassName() + "," + rootNode.getText() + "," + count);
@@ -381,10 +316,8 @@ public class SendService extends AccessibilityService {
                 continue;
             }
 
-//            Log.d(TAG, "class=" + nodeInfo.getClassName());
-
             if ("android.widget.EditText".equals(nodeInfo.getClassName())) {
-                AppLog.debug(TAG, "================== findEditText : " + content);
+                AppLog.debug(TAG, "================== findEditText lable: " + label + " content:" + content);
                 Bundle arguments = new Bundle();
                 arguments.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT, AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD);
                 arguments.putBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, true);
@@ -392,13 +325,13 @@ public class SendService extends AccessibilityService {
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
 
                 ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("content", content);
+                ClipData clip = ClipData.newPlainText(label, content);
                 clipboardManager.setPrimaryClip(clip);
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PASTE);
                 return true;
             }
 //
-            if (findEditText(nodeInfo, content)) {
+            if (findEditText(nodeInfo, label, content)) {
                 return true;
             }
         }
@@ -410,25 +343,28 @@ public class SendService extends AccessibilityService {
     /**
      * 寻找窗体中的“发送”按钮，并且点击。
      */
-    private void send() {
-        send("");
+    private boolean send() {
+        return send("");
     }
 
-    private void send(String nickname) {
+    private boolean send(String nickname) {
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         if (rootNode == null) {
-            return;
+            return false;
         }
         List<AccessibilityNodeInfo> list = rootNode.findAccessibilityNodeInfosByViewId(ViewUtils.RESOURCE_ID_BUTTON);
         if (list == null) {
-            return;
+            return false;
         }
         for (AccessibilityNodeInfo node : list) {
             if ("android.widget.Button".equals(node.getClassName()) && node.isEnabled()) {
                 Log.i(TAG, "================== click send ");
                 node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                return true;
             }
         }
+
+        return false;
     }
 
     public boolean isAppForeground(String packetName) {
