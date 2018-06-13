@@ -11,6 +11,7 @@ public  class SendState {
         IDLE,// 空闲状态
         PASTE_AT,// 粘贴@
         SELECT_AT_NICKNAME,// 弹出nickname列表，选择nickname
+        PASTE_NICKNAME, // 如果nickname list 找不到对应的nickname，则跳此状态
         CLICK_SEND, // 点击发送
         PASTE_CONTENT,//粘贴内容
         CLICK_SEND_2,// 再次点击发送

@@ -66,6 +66,13 @@ public class SendService extends AccessibilityService {
         Log.d(TAG, "get event = " + eventType);
         switch (eventType) {
             case AccessibilityEvent.TYPE_VIEW_CLICKED:
+                if (!ViewUtils.MM_PNAME.equals(event.getPackageName())) {
+                    return;
+                }
+                if (!CollectionUtils.isEmpty(event.getText())) {
+                    return;
+                }
+//                AppLog.debug(TAG, " source:" + event.getSource() + " \nclassName:" + event.getClassName() + " \ntext:" + event.getText() + " \naction:" + event.getAction() + " \ngetPackageName" + event.getPackageName());
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -147,7 +154,7 @@ public class SendService extends AccessibilityService {
 
 
     private void fillAndSend(final AccessibilityNodeInfo rootNode, String group, String nickname, final List<String> nicknameList) {
-        if (!mInSendView) {
+        if (!mInSendView || (state != SendState.S.IDLE && state != SendState.S.END)) {
             return;
         }
         if (rootNode == null) {
@@ -181,24 +188,31 @@ public class SendService extends AccessibilityService {
                         }
                         break;
                     case SELECT_AT_NICKNAME:
-                       final String nickname = mNicknameList.remove(0);
-                        // 1、执行at nickname
+                        final String nickname = mNicknameList.get(0);
+                        // 1、执行at nickname；如果找不到，可能是view 没有弹出来，也可能是nickname 离开了群组
                         boolean found = findListViewAndClickItem(nickname);
                         AppLog.debug(TAG, String.format("=====exec 11111 state:%s, at nickname:%s, flag:%b ", state, nickname, found));
-                        state = SendState.S.PASTE_AT;
-                        if (found) {
 
+                        if (found) {
+                            mNicknameList.remove(0);
+                            state = SendState.S.PASTE_AT;
+                            mViewHandler.postDelayed(this, 500);
                         } else {
                             // 如果找不到，则关闭窗口，然后粘贴nickname，然后往下执行
-                            ViewUtils.clickView(getRootInActiveWindow(), "com.tencent.mm:id/ht", "android.widget.ImageView");
 
-                            try {
-                                Thread.sleep(500);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            findEditTextContent(getRootInActiveWindow(), nickname + " ");
+
+                            state = SendState.S.PASTE_NICKNAME;
+                            mViewHandler.postDelayed(this, 500);
                         }
+
+                        break;
+                    case PASTE_NICKNAME:
+                        ViewUtils.clickView(getRootInActiveWindow(), "com.tencent.mm:id/ht", "android.widget.ImageView");
+                        ViewUtils.clickView(getRootInActiveWindow(), "com.tencent.mm:id/hs", "android.widget.LinearLayout");
+                        String nickname2 = mNicknameList.remove(0);
+                        boolean flagNickname = findEditTextContent(getRootInActiveWindow(), nickname2 + " ");
+                        AppLog.debug(TAG, String.format("=====exec 1.51.51.51.51.5 state:%s, at nickname:%s, flag:%b ", state, nickname2, flagNickname));
+                        state = SendState.S.PASTE_AT;
                         mViewHandler.postDelayed(this, 500);
                         break;
                     case CLICK_SEND:
@@ -277,8 +291,8 @@ public class SendService extends AccessibilityService {
                             continue;
                         }
                         for (AccessibilityNodeInfo textNode : textNodeList) {
-                            AppLog.debug(TAG, String.format(" f==========================childPosition:%d,  =ViewUtils.getNodeText(textNode):%s, size:%d , nickname:%s , textNode:%s",
-                                    j, ViewUtils.getNodeText(textNode), textNodeList.size(), nickname, textNode.getText()));
+                            AppLog.debug(TAG, String.format(" f==========================childPosition:%d,  =ViewUtils.getNodeText(textNode):%s, size:%d , nickname:%s ",
+                                    j, ViewUtils.getNodeText(textNode), textNodeList.size(), nickname));
                             if ("android.widget.TextView".equals(textNode.getClassName()) && nickname.equals(ViewUtils.getNodeText(textNode))) {
                                 AppLog.debug(TAG, " find nickname success=====================================:");
                                 childNode.performAction(AccessibilityNodeInfo.ACTION_CLICK);
@@ -308,7 +322,7 @@ public class SendService extends AccessibilityService {
     private boolean findEditText(AccessibilityNodeInfo rootNode, String label, String content) {
         int count = rootNode.getChildCount();
 
-//        Log.d(TAG, "root class=" + rootNode.getClassName() + "," + rootNode.getText() + "," + count);
+//        Log.d(TAG, "=========== findEditText root class=" + rootNode.getClassName() + "," + rootNode.getText() + "," + count);
         for (int i = 0; i < count; i++) {
             AccessibilityNodeInfo nodeInfo = rootNode.getChild(i);
             if (nodeInfo == null) {
@@ -322,7 +336,10 @@ public class SendService extends AccessibilityService {
                 arguments.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT, AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD);
                 arguments.putBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, true);
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY, arguments);
+                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS);
+                nodeInfo.performAction(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+                nodeInfo.performAction(AccessibilityNodeInfo.FOCUS_INPUT);
 
                 ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                 ClipData clip = ClipData.newPlainText(label, content);
