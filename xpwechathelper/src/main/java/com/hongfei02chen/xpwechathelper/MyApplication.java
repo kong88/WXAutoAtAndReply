@@ -35,13 +35,21 @@ public class MyApplication extends Application {
     public static String getDbName1() {
         return DB_NAME_1;
     }
+
     private void initDaoSession() {
-        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, ENCRYPTED ? "wechat-magic-encrypted.db" :DB_NAME );
+        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, ENCRYPTED ? "wechat-magic-encrypted.db" : DB_NAME);
         Database db = ENCRYPTED ? helper.getEncryptedWritableDb("super-secret") : helper.getWritableDb();
         daoSession = new DaoMaster(db).newSession();
     }
 
     public DaoSession getDaoSession() {
         return daoSession;
+    }
+
+    public DaoSession getDaoSession1() {
+        Database db1 = new DaoMaster.DevOpenHelper(this, MyApplication.getDbName1()).getWritableDb();
+        DaoSession daoSession1 = new DaoMaster(db1).newSession();
+
+        return daoSession1;
     }
 }

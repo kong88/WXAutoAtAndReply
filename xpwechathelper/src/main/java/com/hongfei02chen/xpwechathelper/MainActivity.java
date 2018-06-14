@@ -1,6 +1,9 @@
 package com.hongfei02chen.xpwechathelper;
 
-import android.content.Intent;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.FragmentTabHost;
@@ -38,6 +41,7 @@ import java.util.Map;
 public class MainActivity extends BaseMultiFragmentActivity {
     private Handler mTimerHandler = new Handler();
     private static final long mDelayTime = 5000;
+    private static final long mKeepAliveTime = 5 * 60 * 1000;
 
     @Override
     protected int getContentViewId() {
@@ -54,7 +58,7 @@ public class MainActivity extends BaseMultiFragmentActivity {
         super.onResume();
         showModuleActiveInfo(false);
 //        transferDbData();
-        startService(new Intent(this, TransferDataService.class));
+        scheduleService();
     }
 
     /**
@@ -134,6 +138,9 @@ public class MainActivity extends BaseMultiFragmentActivity {
         for (ChatRoomBean bean : updateList) {
             DbChatRoomHelper.coverInsert(daoSession, bean.getChatRoom(), bean.getRoomName(), bean.getState());
         }
+
+        daoSession1 = null;
+        db1 = null;
     }
 
     @Override
@@ -186,4 +193,24 @@ public class MainActivity extends BaseMultiFragmentActivity {
             mTimerHandler.postDelayed(mRunnable, mDelayTime);
         }
     };
+
+    private void scheduleService() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            JobScheduler jobScheduler = (JobScheduler) getSystemService(JOB_SCHEDULER_SERVICE);
+            JobInfo.Builder builder = new JobInfo.Builder(1, new ComponentName(getPackageName(), TransferDataService.class.getName()));
+
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                builder.setMinimumLatency(mKeepAliveTime);
+//                builder.setPeriodic(JobInfo.getMinPeriodMillis(), JobInfo.getMinFlexMillis());
+            } else {
+                builder.setPeriodic(mKeepAliveTime);
+            }
+
+            JobInfo jobInfo = builder.setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setPersisted(true)
+                    .build();
+            jobScheduler.schedule(jobInfo);
+        }
+    }
 }
