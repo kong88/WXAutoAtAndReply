@@ -30,7 +30,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.activity.KeepAliveActivity"   android:theme="@style/TransparentStyle">
+        <activity android:name=".ui.activity.KeepAliveActivity"
+            android:excludeFromRecents="true"
+            android:theme="@style/TransparentStyle">
 
         </activity>
 
